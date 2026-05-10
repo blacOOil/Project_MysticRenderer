@@ -8,7 +8,7 @@ module.exports = (env, argv) => {
         entry: './src/main3d.ts',
         output: {
             filename: 'main.bundle.js',
-            path: path.resolve(__dirname, 'dist'),
+            path: path.resolve(__dirname, 'docs'),
             clean: false,
             publicPath: '',
         },
