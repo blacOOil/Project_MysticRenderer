@@ -1,0 +1,42 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0a0a0f;
+}
+
+.grid {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    width: 100vw;
+    height: 100vh;
+}
+
+.item1 {
+    padding: 12px 20px;
+    color: white;
+    background: #111;
+}
+
+.item1 h1 {
+    font-size: 1.2rem;
+    font-family: sans-serif;
+}
+
+.item2 {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#canvas-webgpu {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
