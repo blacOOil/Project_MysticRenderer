@@ -6,7 +6,7 @@ import './site.css';
 const Render3DModel = async () => {
     const { device, canvas, format, context } = await InitGPU();
 
-    const objData = await loadOBJ('/model.obj');
+    const objData = await loadOBJ('./model.obj');
 
     // --- Buffers ---
     const vertexBuffer = CreateGPUBuffer(device, objData.vertices);
