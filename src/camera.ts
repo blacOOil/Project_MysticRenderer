@@ -5,7 +5,13 @@ export class OrbitCamera {
     pitch  = 0.3;
     radius = 3.0;
 
+    //  pan target (what the camera looks at)
+    private targetX = 0;
+    private targetY = 0;
+    private targetZ = 0;
+
     private isDragging  = false;
+    private isPanning   = false; //  middle mouse
     private lastX       = 0;
     private lastY       = 0;
     private lastTouchX  = 0;
@@ -17,24 +23,53 @@ export class OrbitCamera {
     }
 
     private registerEvents() {
-        // Mouse
+        // Mouse down — left = orbit, middle = pan
         this.canvas.addEventListener('mousedown', (e) => {
-            this.isDragging = true;
+            if (e.button === 0) {
+                this.isDragging = true;
+            }
+            if (e.button === 1) {
+                this.isPanning = true;
+                e.preventDefault(); //  stop browser auto-scroll on middle click
+            }
             this.lastX = e.clientX;
             this.lastY = e.clientY;
         });
-        window.addEventListener('mouseup', () => {
-            this.isDragging = false;
+
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 0) this.isDragging = false;
+            if (e.button === 1) this.isPanning  = false;
         });
+
         window.addEventListener('mousemove', (e) => {
-            if (!this.isDragging) return;
             const dx = e.clientX - this.lastX;
             const dy = e.clientY - this.lastY;
             this.lastX = e.clientX;
             this.lastY = e.clientY;
-            this.yaw   += dx * 0.005;
-            this.pitch += dy * 0.005;
-            this.clampPitch();
+
+            if (this.isDragging) {
+                this.yaw   += dx * 0.005;
+                this.pitch += dy * 0.005;
+                this.clampPitch();
+            }
+
+            if (this.isPanning) {
+                //  pan speed scales with zoom distance
+                const panSpeed = this.radius * 0.001;
+
+                // right vector from yaw
+                const rightX =  Math.cos(this.yaw);
+                const rightZ = -Math.sin(this.yaw);
+
+                // up vector from pitch
+                const upX = -Math.sin(this.pitch) * Math.sin(this.yaw);
+                const upY =  Math.cos(this.pitch);
+                const upZ = -Math.sin(this.pitch) * Math.cos(this.yaw);
+
+                this.targetX -= (rightX * dx - upX * dy) * panSpeed;
+                this.targetY -= upY * dy * panSpeed;
+                this.targetZ -= (rightZ * dx - upZ * dy) * panSpeed;
+            }
         });
 
         // Scroll zoom
@@ -57,6 +92,7 @@ export class OrbitCamera {
                 );
             }
         });
+
         this.canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             if (e.touches.length === 1) {
@@ -78,6 +114,11 @@ export class OrbitCamera {
                 this.lastPinchDist = dist;
             }
         }, { passive: false });
+
+        //  prevent middle-click scroll popup on Windows
+        this.canvas.addEventListener('auxclick', (e) => {
+            if (e.button === 1) e.preventDefault();
+        });
     }
 
     private clampPitch() {
@@ -90,9 +131,9 @@ export class OrbitCamera {
 
     getPosition(): [number, number, number] {
         return [
-            this.radius * Math.sin(this.yaw) * Math.cos(this.pitch),
-            this.radius * Math.sin(this.pitch),
-            this.radius * Math.cos(this.yaw) * Math.cos(this.pitch),
+            this.targetX + this.radius * Math.sin(this.yaw) * Math.cos(this.pitch),
+            this.targetY + this.radius * Math.sin(this.pitch),
+            this.targetZ + this.radius * Math.cos(this.yaw) * Math.cos(this.pitch),
         ];
     }
 
@@ -101,7 +142,7 @@ export class OrbitCamera {
         return mat4.lookAt(
             mat4.create(),
             vec3.fromValues(x, y, z),
-            vec3.fromValues(0, 0, 0),
+            vec3.fromValues(this.targetX, this.targetY, this.targetZ), // ✅ look at pan target
             vec3.fromValues(0, 1, 0),
         );
     }
