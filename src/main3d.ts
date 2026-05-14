@@ -8,41 +8,40 @@ const main = async () => {
     const { device, canvas, format, context } = await InitGPU();
     const camera = new OrbitCamera(canvas);
 
-    // ✅ list all models here
-    const modelPaths = [
-        './model.obj',
-        './model0.obj',
-    ];
-    let currentIndex = 0;
-
-    // load first model
-    const firstModel = await loadOBJ(modelPaths[currentIndex]);
+    // load default model
+    const firstModel = await loadOBJ('./model.obj');
     const renderer   = new Renderer(device, canvas, context, format, camera, firstModel);
     renderer.start();
 
-    // button logic
-    const prevBtn = document.getElementById('Previous_model') as HTMLButtonElement;
-    const nextBtn = document.getElementById('Next_model')     as HTMLButtonElement;
+    // ---- Drag and drop ----
+    const dropZone = document.getElementById('canvas-webgpu') as HTMLCanvasElement;
 
-    const swapModel = async (index: number) => {
-        prevBtn.disabled = true;
-        nextBtn.disabled = true;
-
-        const objData = await loadOBJ(modelPaths[index]);
-        renderer.loadModel(objData);
-
-        prevBtn.disabled = false;
-        nextBtn.disabled = false;
-    };
-
-    prevBtn.addEventListener('click', async () => {
-        currentIndex = (currentIndex - 1 + modelPaths.length) % modelPaths.length;
-        await swapModel(currentIndex);
+    // prevent browser from opening the file
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over'); //  visual feedback
     });
 
-    nextBtn.addEventListener('click', async () => {
-        currentIndex = (currentIndex + 1) % modelPaths.length;
-        await swapModel(currentIndex);
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+
+    dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+
+        const file = e.dataTransfer?.files[0];
+        if (!file) return;
+
+        //  only accept .obj files
+        if (!file.name.endsWith('.obj')) {
+            alert('Only .obj files are supported.');
+            return;
+        }
+
+        const text = await file.text();
+        const objData = loadOBJ(text);
+        renderer.loadModel(objData);
     });
 };
 

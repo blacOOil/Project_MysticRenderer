@@ -30,6 +30,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let lightDir  = normalize(vec3<f32>(1.0, 2.0, 3.0));
     let diffuse   = max(dot(in.normal, lightDir), 0.0);
     let ambient   = 0.2;
-    let color     = vec3<f32>(1.0, 1.0, 1.0); // model tint
+    let color     = vec3<f32>(1.0, 1.0, 1.0); //
     return vec4<f32>(color * (ambient + diffuse * 0.8), 1.0);
 }

@@ -159,12 +159,10 @@ export class Renderer {
         this.depthTexture.destroy();
     }
     loadModel(objData: ModelData) {
-    // destroy old buffers
     this.vertexBuffer.destroy();
     this.normalBuffer.destroy();
     this.indexBuffer.destroy();
 
-    // create new buffers from new model
     this.indexCount   = objData.indices.length;
     this.vertexBuffer = CreateGPUBuffer(this.device, objData.vertices);
     this.normalBuffer = CreateGPUBuffer(this.device, objData.normals);
