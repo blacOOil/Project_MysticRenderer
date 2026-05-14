@@ -8,18 +8,40 @@ const main = async () => {
     const { device, canvas, format, context } = await InitGPU();
     const camera = new OrbitCamera(canvas);
 
-    // load default model
-    const firstModel = await loadOBJ('./model.obj');
+    const firstModel = loadOBJ(await fetch('./model.obj').then(r => r.text()));
     const renderer   = new Renderer(device, canvas, context, format, camera, firstModel);
     renderer.start();
 
-    // ---- Drag and drop ----
-    const dropZone = document.getElementById('canvas-webgpu') as HTMLCanvasElement;
+    // ---- shared load helper ----
+    const loadFromText = (text: string) => {
+        renderer.loadModel(loadOBJ(text));
+    };
 
-    // prevent browser from opening the file
+    // ---- Browse button ----
+    const fileInput = document.getElementById('file-input') as HTMLInputElement;
+    const browseBtn = document.getElementById('browse-btn') as HTMLButtonElement;
+
+    browseBtn.addEventListener('click', () => {
+        fileInput.click(); //  trigger hidden file picker
+    });
+
+    fileInput.addEventListener('change', async () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        if (!file.name.endsWith('.obj')) {
+            alert('Only .obj files are supported.');
+            return;
+        }
+        loadFromText(await file.text());
+        fileInput.value = ''; //  reset so same file can be re-picked
+    });
+
+    // ---- Drag and drop ----
+    const dropZone = canvas;
+
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        dropZone.classList.add('drag-over'); //  visual feedback
+        dropZone.classList.add('drag-over');
     });
 
     dropZone.addEventListener('dragleave', () => {
@@ -29,19 +51,13 @@ const main = async () => {
     dropZone.addEventListener('drop', async (e) => {
         e.preventDefault();
         dropZone.classList.remove('drag-over');
-
         const file = e.dataTransfer?.files[0];
         if (!file) return;
-
-        //  only accept .obj files
         if (!file.name.endsWith('.obj')) {
             alert('Only .obj files are supported.');
             return;
         }
-
-        const text = await file.text();
-        const objData = loadOBJ(text);
-        renderer.loadModel(objData);
+        loadFromText(await file.text());
     });
 };
 
