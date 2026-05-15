@@ -1,49 +1,68 @@
+export interface MaterialData {
+    diffuse: [number, number, number];
+    texture?: ImageBitmap; // optional texture
+}
+
 export interface ModelData {
-    vertices: Float32Array;
-    normals:  Float32Array;
-    indices:  Uint16Array;
+    vertices:  Float32Array;
+    normals:   Float32Array;
+    uvs?:      Float32Array;//  new
+    indices:   Uint16Array | Uint32Array;
+    materials?: MaterialData[];
 }
 
 export const loadOBJ = (text: string): ModelData => {
     const finalVerts:   number[] = [];
     const finalNormals: number[] = [];
+    const finalUVs:     number[] = []; // 
     const indices:      number[] = [];
     const tmpPos:       number[][] = [];
     const tmpNorm:      number[][] = [];
+    const tmpUV:        number[][] = []; // 
+
+    const materials: Map<string, MaterialData> = new Map();
+    let currentMaterial: MaterialData = { diffuse: [0.6, 0.8, 1.0] };
+    const vertMaterials: MaterialData[] = [];
 
     for (const line of text.split('\n')) {
         const parts = line.trim().split(/\s+/);
 
         if (parts[0] === 'v') {
-            tmpPos.push([
-                parseFloat(parts[1]),
-                parseFloat(parts[2]),
-                parseFloat(parts[3]),
-            ]);
+            tmpPos.push([parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])]);
         } else if (parts[0] === 'vn') {
-            tmpNorm.push([
-                parseFloat(parts[1]),
-                parseFloat(parts[2]),
-                parseFloat(parts[3]),
-            ]);
+            tmpNorm.push([parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])]);
+        } else if (parts[0] === 'vt') { // ✅ UV coords
+            tmpUV.push([parseFloat(parts[1]), parseFloat(parts[2])]);
+        } else if (parts[0] === 'newmtl') {
+            const mat: MaterialData = { diffuse: [0.6, 0.8, 1.0] };
+            materials.set(parts[1], mat);
+            currentMaterial = mat;
+        } else if (parts[0] === 'Kd') {
+            currentMaterial.diffuse = [parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])];
+        } else if (parts[0] === 'usemtl') {
+            currentMaterial = materials.get(parts[1]) ?? { diffuse: [0.6, 0.8, 1.0] };
         } else if (parts[0] === 'f') {
             const faceVerts = parts.slice(1).map(p => {
-                const [vi, , ni] = p.split('/').map(Number);
-                return { vi: vi - 1, ni: (ni || 1) - 1 };
+                const [vi, ti, ni] = p.split('/').map(Number);
+                return { vi: vi - 1, ti: (ti || 1) - 1, ni: (ni || 1) - 1 };
             });
             for (let i = 1; i < faceVerts.length - 1; i++) {
                 for (const fv of [faceVerts[0], faceVerts[i], faceVerts[i + 1]]) {
                     indices.push(finalVerts.length / 3);
                     finalVerts.push(...tmpPos[fv.vi]);
                     finalNormals.push(...(tmpNorm[fv.ni] ?? [0, 1, 0]));
+                    finalUVs.push(...(tmpUV[fv.ti] ?? [0, 0])); // 
+                    vertMaterials.push(currentMaterial);
                 }
             }
         }
     }
 
     return {
-        vertices: new Float32Array(finalVerts),
-        normals:  new Float32Array(finalNormals),
-        indices:  new Uint16Array(indices),
+        vertices:  new Float32Array(finalVerts),
+        normals:   new Float32Array(finalNormals),
+        uvs:       new Float32Array(finalUVs), // 
+        indices:   new Uint32Array(indices),
+        materials: vertMaterials,
     };
 };
