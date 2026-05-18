@@ -9,7 +9,6 @@ const main = async () => {
     const { device, canvas, format, context } = await InitGPU();
     const camera = new OrbitCamera(canvas);
 
-    //  safe default model load with fallback
     let firstModel;
     try {
         const text = await fetch('./model.obj').then(r => {
@@ -18,38 +17,72 @@ const main = async () => {
         });
         firstModel = loadOBJ(text);
     } catch (e) {
-        console.warn('No default model.obj found, starting empty:', e);
-        //  empty model so renderer doesn't crash
+        console.warn('No default model.obj found:', e);
         firstModel = {
-            vertices: new Float32Array([0, 0, 0]),
-            normals:  new Float32Array([0, 1, 0]),
-            indices:  new Uint32Array([0]),
+            vertices:  new Float32Array([0, 0, 0]),
+            normals:   new Float32Array([0, 1, 0]),
+            indices:   new Uint32Array([0]),
             materials: [],
+            uvs:       new Float32Array([0, 0]),
         };
     }
 
     const renderer = new Renderer(device, canvas, context, format, camera, firstModel);
     renderer.start();
 
-    // ---- shared file loader ----
+    // store pending files — user may drop obj+mtl+texture together
+    let pendingFiles: Map<string, File> = new Map();
+
     const loadFile = async (file: File) => {
         const ext = file.name.split('.').pop()?.toLowerCase();
         try {
-            if (ext === 'obj') {
-                const text = await file.text();
-                renderer.loadModel(loadOBJ(text));
-                renderer.setRotation(0, 0, 0); 
-            } else if (ext === 'fbx') {
+            if (ext === 'fbx') {
                 const buffer = await file.arrayBuffer();
                 renderer.loadModel(loadFBX(buffer));
-                renderer.setRotation( 0, 0, 0);
+                renderer.setRotation(0, 0, 0);
+                camera.radius = 3.0;
+                camera.yaw    = 0;
+                camera.pitch  = 0.3;
+
+            } else if (ext === 'obj') {
+                pendingFiles.set('obj', file);
+                await tryLoadOBJWithAssets(pendingFiles, renderer);
+
+            } else if (ext === 'mtl') {
+                pendingFiles.set('mtl', file);
+                await tryLoadOBJWithAssets(pendingFiles, renderer);
+
+            } else if (['png', 'jpg', 'jpeg', 'webp'].includes(ext ?? '')) {
+                pendingFiles.set('tex', file);
+                await tryLoadOBJWithAssets(pendingFiles, renderer);
+
             } else {
-                alert('Only .obj and .fbx files are supported.');
+                alert('Supported: .obj .mtl .png .jpg .fbx');
             }
         } catch (e) {
-            console.error('Failed to load model:', e);
-            alert('Failed to load model. Check console for details.');
+            console.error('Failed to load:', e);
+            alert('Failed to load model.');
         }
+    };
+
+    //  try to load OBJ once we have the files we need
+    const tryLoadOBJWithAssets = async (files: Map<string, File>, renderer: Renderer) => {
+        const objFile = files.get('obj');
+        if (!objFile) return; // wait for obj at minimum
+
+        const objText   = await objFile.text();
+        const mtlFile   = files.get('mtl');
+        const texFile   = files.get('tex');
+
+        let mtlText: string | undefined;
+        if (mtlFile) mtlText = await mtlFile.text();
+
+        let bitmap: ImageBitmap | undefined;
+        if (texFile) bitmap = await createImageBitmap(texFile);
+
+        const modelData = loadOBJ(objText, mtlText, bitmap);
+        renderer.loadModel(modelData);
+        renderer.setRotation(0, 0, 0);
     };
 
     // ---- Browse button ----
@@ -59,9 +92,10 @@ const main = async () => {
     browseBtn.addEventListener('click', () => fileInput.click());
 
     fileInput.addEventListener('change', async () => {
-        const file = fileInput.files?.[0];
-        if (!file) return;
-        await loadFile(file);
+        //  allow selecting multiple files at once
+        const files = Array.from(fileInput.files ?? []);
+        pendingFiles.clear(); // reset on new browse
+        for (const file of files) await loadFile(file);
         fileInput.value = '';
     });
 
@@ -78,9 +112,9 @@ const main = async () => {
     canvas.addEventListener('drop', async (e) => {
         e.preventDefault();
         canvas.classList.remove('drag-over');
-        const file = e.dataTransfer?.files[0];
-        if (!file) return;
-        await loadFile(file);
+        const files = Array.from(e.dataTransfer?.files ?? []);
+        pendingFiles.clear(); // reset on new drop
+        for (const file of files) await loadFile(file);
     });
 };
 
