@@ -84,6 +84,32 @@ const main = async () => {
         renderer.loadModel(modelData);
         renderer.setRotation(0, 0, 0);
     };
+    const ambientSlider = document.getElementById('ambient') as HTMLInputElement;
+    const lightXSlider  = document.getElementById('lightX')  as HTMLInputElement;
+    const lightYSlider  = document.getElementById('lightY')  as HTMLInputElement;
+    const lightZSlider  = document.getElementById('lightZ')  as HTMLInputElement;
+
+    const updateLight = () => {
+    renderer.setAmbient(parseFloat(ambientSlider.value));
+    renderer.setLightDirection(
+        parseFloat(lightXSlider.value),
+        parseFloat(lightYSlider.value),
+        parseFloat(lightZSlider.value),
+    );
+};
+    const bgPicker = document.getElementById('bg-color') as HTMLInputElement;
+    bgPicker.addEventListener('input', () => {
+    const hex = bgPicker.value;
+    const r = parseInt(hex.slice(1,3), 16) / 255;
+    const g = parseInt(hex.slice(3,5), 16) / 255;
+    const b = parseInt(hex.slice(5,7), 16) / 255;
+    renderer.setBackgroundColor(r, g, b);
+});
+
+    ambientSlider.addEventListener('input', updateLight);
+    lightXSlider.addEventListener('input',  updateLight);
+    lightYSlider.addEventListener('input',  updateLight);
+    lightZSlider.addEventListener('input',  updateLight);
 
     // ---- Browse button ----
     const fileInput = document.getElementById('file-input') as HTMLInputElement;

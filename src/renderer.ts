@@ -19,10 +19,17 @@ export class Renderer {
     private animFrameId:   number = 0;
     private modelRotation: [number, number, number] = [0, 0, 0];
 
+    private lightBuffer: GPUBuffer; // 
+    private lightDir:    [number, number, number] = [1.0, 2.0, 3.0];
+    private lightColor:  [number, number, number] = [1.0, 1.0, 1.0];
+    private ambient:     number = 0.2;
+
     //  texture resources
     private gpuTexture:  GPUTexture | null = null;
     private sampler:     GPUSampler;
     private hasTexture:  boolean = false;
+
+
 
     constructor(
         private device:   GPUDevice,
@@ -50,6 +57,7 @@ export class Renderer {
         this.uniformBuffer = this.createUniformBuffer();
         this.pipeline      = this.createPipeline();
 
+        this.lightBuffer   = this.createLightBuffer();
         this.gpuTexture    = this.createDefaultTexture();
         this.bindGroup     = this.createBindGroup();
         this.depthTexture  = this.createDepthTexture();
@@ -72,6 +80,30 @@ export class Renderer {
         );
         return tex;
     }
+    private createLightBuffer(): GPUBuffer {
+    return this.device.createBuffer({
+        size: 32, // vec3 lightDir (12) + pad (4) + vec3 lightColor (12) + ambient (4)
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+}
+    private updateLightBuffer() {
+    const data = new Float32Array([
+        ...this.lightDir,   this.ambient,   // offset 0  — xyz + ambient packed
+        ...this.lightColor, 0.0,            // offset 16 — rgb + padding
+    ]);
+    this.device.queue.writeBuffer(this.lightBuffer, 0, data);
+}
+    setLightDirection(x: number, y: number, z: number) {
+    this.lightDir = [x, y, z];
+}
+
+    setLightColor(r: number, g: number, b: number) {
+    this.lightColor = [r, g, b];
+}
+
+    setAmbient(value: number) {
+    this.ambient = Math.max(0, Math.min(1, value));
+}
 
     //  upload ImageBitmap texture to GPU if present
     private uploadTexture(objData: ModelData) {
@@ -112,6 +144,11 @@ export class Renderer {
             colors.push(...mat.diffuse);
         }
         return new Float32Array(colors);
+    }
+    private clearColor = { r: 0.1, g: 0.1, b: 0.15, a: 1.0 };
+
+    setBackgroundColor(r: number, g: number, b: number) {
+    this.clearColor = { r, g, b, a: 1.0 };
     }
 
     private createIndexBuffer(indices: Uint16Array | Uint32Array): GPUBuffer {
@@ -165,8 +202,9 @@ export class Renderer {
             layout: this.pipeline.getBindGroupLayout(0),
             entries: [
                 { binding: 0, resource: { buffer: this.uniformBuffer } },
-                { binding: 1, resource: this.sampler },                        // ✅
-                { binding: 2, resource: this.gpuTexture!.createView() },       // ✅
+                { binding: 1, resource: this.sampler },                        // 
+                { binding: 2, resource: this.gpuTexture!.createView() },       // 
+                { binding: 3, resource: { buffer: this.lightBuffer } },
             ],
         });
     }
@@ -209,13 +247,14 @@ export class Renderer {
 
     private frame() {
         this.updateUniforms();
+        this.updateLightBuffer(); 
         this.refreshDepthTexture();
 
         const commandEncoder = this.device.createCommandEncoder();
         const renderPass = commandEncoder.beginRenderPass({
             colorAttachments: [{
                 view: this.context.getCurrentTexture().createView(),
-                clearValue: { r: 0.1, g: 0.1, b: 0.15, a: 1.0 },
+                clearValue: this.clearColor,
                 loadOp: 'clear',
                 storeOp: 'store',
             }],
@@ -275,6 +314,7 @@ export class Renderer {
         this.uvBuffer.destroy();
         this.indexBuffer.destroy();
         this.uniformBuffer.destroy();
+        this.lightBuffer.destroy();
         this.depthTexture.destroy();
         this.gpuTexture?.destroy();
     }
