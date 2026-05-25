@@ -49,6 +49,8 @@ html, body {
     padding: 10px 16px;
     background: #111;
     align-items: center;
+    color: #ccc;
+    font-family: sans-serif;
 }
 
 button {
