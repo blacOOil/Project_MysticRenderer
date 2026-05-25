@@ -11,10 +11,14 @@
         <div class="item1">
             <h1>Project Mystic Renderer</h1>
         </div>
-        <div class="item2">
-            <canvas id="canvas-webgpu"></canvas>
-            <div class="drop-hint">Drop .obj file here</div>
+           <div class="canvas-grid">
+            <div class="viewport">
+                <canvas id="canvas-0"></canvas>
+                <div class="drop-hint">Drop model here</div>
+                <div class="viewport-label">View 1</div>
+            </div>
         </div>
+
         <div class="item3">
             <input type="file" id="file-input" accept=".obj,.mtl,.fbx,.png,.jpg,.jpeg,.webp" 
             style="display:none" multiple>
