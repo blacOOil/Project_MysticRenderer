@@ -25,6 +25,11 @@ const main = async () => {
     const renderers: Renderer[] = [];
     const cameras:   OrbitCamera[] = [];
 
+const defaultModel = await fetch('./cube.obj')
+    .then(r => r.text())
+    .then(text => loadOBJ(text))
+    .catch(() => emptyModel); // fallback to empty if file missing
+
     for (let i = 0; i < CANVAS_COUNT; i++) {
         const canvas = document.getElementById(`canvas-${i}`) as HTMLCanvasElement;
         if (!canvas) continue;
@@ -32,7 +37,7 @@ const main = async () => {
         try {
             const { device, format, context } = await InitGPUForCanvas(canvas);
             const camera   = new OrbitCamera(canvas);
-            const renderer = new Renderer(device, canvas, context, format, camera, emptyModel);
+            const renderer = new Renderer(device, canvas, context, format, camera, defaultModel);
             renderer.start();
             renderers.push(renderer);
             cameras.push(camera);
