@@ -142,7 +142,7 @@ export class OrbitCamera {
         return mat4.lookAt(
             mat4.create(),
             vec3.fromValues(x, y, z),
-            vec3.fromValues(this.targetX, this.targetY, this.targetZ), // ✅ look at pan target
+            vec3.fromValues(this.targetX, this.targetY, this.targetZ), // look at pan target
             vec3.fromValues(0, 1, 0),
         );
     }
